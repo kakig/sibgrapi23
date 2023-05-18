@@ -1,6 +1,8 @@
 ##########################
 # KEDRO PROJECT
 
+notebooks/sam*
+
 # ignore all local configuration
 conf/local/**
 !conf/local/.gitkeep
