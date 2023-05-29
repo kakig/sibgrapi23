@@ -66,6 +66,34 @@ def _intersection(line1, line2):
     x0, y0 = int(np.round(x0)), int(np.round(y0))
     return [[x0, y0]]
 
+# https://learnopencv.com/intersection-over-union-iou-in-object-detection-and-segmentation/
+def _calc_iou(ground_truth, pred):
+    # coordinates of the area of intersection.
+    ix1 = np.maximum(ground_truth[0], pred[0])
+    iy1 = np.maximum(ground_truth[1], pred[1])
+    ix2 = np.minimum(ground_truth[2], pred[2])
+    iy2 = np.minimum(ground_truth[3], pred[3])
+     
+    # Intersection height and width.
+    i_height = np.maximum(iy2 - iy1 + 1, np.array(0.))
+    i_width = np.maximum(ix2 - ix1 + 1, np.array(0.))
+     
+    area_of_intersection = i_height * i_width
+     
+    # Ground Truth dimensions.
+    gt_height = ground_truth[3] - ground_truth[1] + 1
+    gt_width = ground_truth[2] - ground_truth[0] + 1
+     
+    # Prediction dimensions.
+    pd_height = pred[3] - pred[1] + 1
+    pd_width = pred[2] - pred[0] + 1
+     
+    area_of_union = gt_height * gt_width + pd_height * pd_width - area_of_intersection
+     
+    iou = area_of_intersection / area_of_union
+     
+    return iou
+
 def _segment_mask_hull(mask):
     gray = mask.astype(np.uint8) * 255
     edged = cv2.Canny(gray, 75, 200)
@@ -149,125 +177,41 @@ def homography(images):
     return [pd.DataFrame(homography_results).T.reset_index(), image_results]
 
 def homography_segmentation_batched(mask_archives, images):
-    homography_results = dict()
+    homography_results_hull = dict()
+    homography_results_hough = dict()
     image_results = dict()
 
     for file_name, loader in mask_archives.items():
         archive = loader()
         original_image = np.array(images[file_name.replace("batched_", "").replace(".npz", "") + "-receipt.jpg"]())
-        border_size = 10
         area_to_image_ratios = list()
         homography_points = list()
         homography_points_hough = list()
-        hulls = list()
-        ious = list()
-        for mask in archive['masks'][0]:
+        for i, mask in enumerate(archive['masks'][0]):
             image_area = mask.shape[0] * mask.shape[1]
-            gray = mask.astype(np.uint8) * 255
-            edged = cv2.Canny(gray, 75, 200)
-            contours, _ = cv2.findContours(edged.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            cnt = sorted(contours, key=lambda c: cv2.arcLength(c, True), reverse=True)
-            if len(cnt) < 1:
-                area_to_image_ratios.append(0)
-                homography_points.append(np.array([]))
-                continue
-            chosen_contours = cnt[0]
-            # select the 4 biggest contours if available
-            for i in range(1, min(len(cnt), 4)):
-                chosen_contours = np.concatenate([chosen_contours, cnt[i]], axis=0)
-            hull = np.intp(cv2.convexHull(chosen_contours))
-            contour_area = cv2.contourArea(hull)
-            area_ratio = contour_area / image_area
-            area_to_image_ratios.append(area_ratio)
 
-            # Hough transform
-            img_canny = cv2.Canny(cv2.copyMakeBorder(gray, border_size, border_size, border_size, border_size, cv2.BORDER_CONSTANT, 0), 75, 200).astype(np.uint8)
-            lines = cv2.HoughLines(img_canny, 2, np.pi / 180, 150)
-            img_hough = cv2.copyMakeBorder(original_image, border_size, border_size, border_size, border_size, cv2.BORDER_CONSTANT, 0)
-            if lines is not None:
-                # limit to 40 lines
-                lines = lines[:40]
-                for rho, theta in lines[:, 0]:
-                    a = np.cos(theta)
-                    b = np.sin(theta)
-                    x0 = a * rho
-                    y0 = b * rho
-                    x1 = int(x0 + 1000 * (-b))
-                    y1 = int(y0 + 1000 * (a))
-                    x2 = int(x0 - 1000 * (-b))
-                    y2 = int(y0 - 1000 * (a))
-                    cv2.line(img_hough, (x1, y1), (x2, y2), (0, 0, 255), 2, cv2.LINE_AA)
-            intersections = []
-            if lines is None:
-                lines = []
-            group_lines = combinations(range(len(lines)), 2)
-            x_in_range = lambda x: 0 <= x <= img_hough.shape[1]
-            y_in_range = lambda y: 0 <= y <= img_hough.shape[0]
-            for i, j in group_lines:
-              line_i, line_j = lines[i][0], lines[j][0]
-              if 80.0 < _get_angle_between_lines(line_i, line_j) < 100.0:
-                  int_point = _intersection(line_i, line_j)
-                  if x_in_range(int_point[0][0]) and y_in_range(int_point[0][1]): 
-                      intersections.append(int_point)
-            if len(intersections) > 0:
-                X = np.array(intersections)[:, 0]
-            else:
-                X = np.array([])
-            for point in X:
-                cv2.circle(img_hough, point, 3, (255, 0, 0), 3).astype('uint8')
-            model = KMeans(n_clusters=4, n_init='auto', random_state=42)
-            points_hough = np.array([])
-            if X.shape[0] >= 4:
-                model.fit(X)
-                # convert coordinates back to original image space
-                points_hough = np.rint(model.cluster_centers_).astype(np.int32)
-                for point in points_hough:
-                    cv2.circle(img_hough, point, 5, (255, 0, 255), 3).astype('uint8')
-                points_hough = np.clip(points_hough - border_size, 0, max(*original_image.shape))
-            else:
-                points_hough = X
-            homography_points_hough.append(points_hough)
+            points_hull = _segment_mask_hull(mask)
+            points_hough = _segment_mask_hough(mask)
+            
+            if len(points_hull) == 4:
+                homography_results_hull[file_name + f"mask{i}"] = {
+                    'P1X': points_hull[0][0], 'P1Y': points_hull[0][1],
+                    'P2X': points_hull[1][0], 'P2Y': points_hull[1][1],
+                    'P3X': points_hull[2][0], 'P3Y': points_hull[2][1],
+                    'P4X': points_hull[3][0], 'P4Y': points_hull[3][1],
+                    'mask_index': i
+                }
 
-            epsilon = 0.1 * cv2.arcLength(hull, True)
-            points = cv2.approxPolyDP(hull, epsilon, True)
-            homography_points.append(points)
+            if len(points_hough) == 4:
+                homography_results_hough[file_name + f"mask{i}"] = {
+                    'P1X': points_hough[0][0], 'P1Y': points_hough[0][1],
+                    'P2X': points_hough[1][0], 'P2Y': points_hough[1][1],
+                    'P3X': points_hough[2][0], 'P3Y': points_hough[2][1],
+                    'P4X': points_hough[3][0], 'P4Y': points_hough[3][1],
+                    'mask_index': i
+                }
 
-        iou_predictions = archive['iou_predictions'][0]
-
-        candidate_indexes = set([0, 1, 2])
-        excluded_indexes = set()
-        best_iou = 0
-        final_index = -1
-        for index in candidate_indexes:
-            if area_to_image_ratios[index] < 0.35:
-                excluded_indexes.add(index)
-                continue
-            if len(homography_points_hough[index]) != 4:
-                excluded_indexes.add(index)
-                continue
-            if iou_predictions[index] > best_iou:
-                final_index = index
-                best_iou = iou_predictions[index]
-            elif final_index == -1:
-                final_index = index
-
-        if len(excluded_indexes) == 3:
-            continue
-
-        print(file_name, final_index, homography_points_hough, iou_predictions)
-        points = _order_points(homography_points_hough[final_index].reshape(-1).reshape((-1, 2)))
-        homography_results[file_name] = {
-            'P1X': points[0][0], 'P1Y': points[0][1],
-            'P2X': points[1][0], 'P2Y': points[1][1],
-            'P3X': points[2][0], 'P3Y': points[2][1],
-            'P4X': points[3][0], 'P4Y': points[3][1]
-        }
-
-        image_boxes = PIL.Image.fromarray(cv2.drawContours(original_image.copy(), [points], 0, (0, 0, 255), 2).astype("uint8"))
-        image_results[file_name + ".jpg"] = image_boxes
-        image_results[file_name + "_hough" + ".jpg"] = PIL.Image.fromarray(img_hough.astype("uint8"))
-
-    return [pd.DataFrame(homography_results).T.reset_index(), image_results]
+    return [pd.DataFrame(homography_results_hull).T.reset_index(), pd.DataFrame(homography_results_hough).T.reset_index()]
 
 def homography_segmentation(masks, images):
     homography_results = dict()

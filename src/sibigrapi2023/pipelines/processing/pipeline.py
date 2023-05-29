@@ -29,6 +29,6 @@ def create_pipeline(**kwargs) -> Pipeline:
             func=homography_segmentation_batched,
             name="homography_segmentation_batched_func",
             inputs=["masks_batched", "express_expense"],
-            outputs=["homography_points_segmentation_batched", "homography_boxes_segmentation_batched"]
+            outputs=["homography_points_segmentation_batched_hull", "homography_points_segmentation_batched_hough"]
         ),
     ])

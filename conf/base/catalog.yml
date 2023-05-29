@@ -21,9 +21,9 @@ homography_points_segmentation:
   save_args:
     index: False
 
-homography_points_segmentation_batched:
+homography_points_segmentation_batched_hull:
   type: pandas.CSVDataSet
-  filepath: data/02_intermediate/homography_points_segmentation_batched.csv
+  filepath: data/02_intermediate/homography_points_segmentation_batched_hull.csv
   save_args:
     index: False
 
