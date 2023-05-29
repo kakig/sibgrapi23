@@ -66,6 +66,56 @@ def _intersection(line1, line2):
     x0, y0 = int(np.round(x0)), int(np.round(y0))
     return [[x0, y0]]
 
+def _segment_mask_hull(mask):
+    gray = mask.astype(np.uint8) * 255
+    edged = cv2.Canny(gray, 75, 200)
+    contours, _ = cv2.findContours(edged.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    cnt = sorted(contours, key=lambda c: cv2.arcLength(c, True), reverse=True)
+    chosen_contours = cnt[0]
+    for i in range(1, min(len(cnt), 4)):
+        chosen_contours = np.concatenate([chosen_contours, cnt[i]], axis=0)
+    hull = np.intp(cv2.convexHull(chosen_contours))
+    epsilon = 0.1 * cv2.arcLength(hull, True)
+    points = cv2.approxPolyDP(hull, epsilon, True)
+    if len(points) != 4:
+        return []
+
+    points = _order_points(points.reshape(-1).reshape((-1, 2)))
+    return points
+
+def _segment_mask_hough(mask):
+    border_size = 10
+    gray = mask.astype(np.uint8) * 255
+    img_canny = cv2.Canny(cv2.copyMakeBorder(gray, border_size, border_size, border_size, border_size, cv2.BORDER_CONSTANT, 0), 75, 200).astype(np.uint8)
+    lines = cv2.HoughLines(img_canny, 2, np.pi / 180, 150)
+    if lines is None:
+        return []
+    lines = lines[:50]
+    intersections = []
+    group_lines = combinations(range(len(lines)), 2)
+    x_in_range = lambda x: 0 <= x <= img_canny.shape[1]
+    y_in_range = lambda y: 0 <= y <= img_canny.shape[0]
+    for i, j in group_lines:
+      line_i, line_j = lines[i][0], lines[j][0]
+      if 80.0 < _get_angle_between_lines(line_i, line_j) < 100.0:
+          int_point = _intersection(line_i, line_j)
+          if x_in_range(int_point[0][0]) and y_in_range(int_point[0][1]): 
+              intersections.append(int_point)
+    if len(intersections) > 0:
+        X = np.array(intersections)[:, 0]
+    else:
+        X = np.array([])
+    model = KMeans(n_clusters=4, n_init='auto', random_state=42)
+    points_hough = np.array([])
+    if X.shape[0] >= 4:
+        model.fit(X)
+        # convert coordinates back to original image space
+        points_hough = np.rint(model.cluster_centers_).astype(np.int32)
+        points_hough = np.clip(points_hough - border_size, 0, max(*img_canny.shape))
+    else:
+        points_hough = X
+    return points_hough
+
 def homography(images):
     # process all images
     homography_results = dict()
@@ -192,7 +242,7 @@ def homography_segmentation_batched(mask_archives, images):
             if area_to_image_ratios[index] < 0.35:
                 excluded_indexes.add(index)
                 continue
-            if len(homography_points[index]) != 4:
+            if len(homography_points_hough[index]) != 4:
                 excluded_indexes.add(index)
                 continue
             if iou_predictions[index] > best_iou:
@@ -204,8 +254,8 @@ def homography_segmentation_batched(mask_archives, images):
         if len(excluded_indexes) == 3:
             continue
 
-        print(file_name, final_index, homography_points, iou_predictions)
-        points = _order_points(homography_points[final_index].reshape(-1).reshape((-1, 2)))
+        print(file_name, final_index, homography_points_hough, iou_predictions)
+        points = _order_points(homography_points_hough[final_index].reshape(-1).reshape((-1, 2)))
         homography_results[file_name] = {
             'P1X': points[0][0], 'P1Y': points[0][1],
             'P2X': points[1][0], 'P2Y': points[1][1],
@@ -226,20 +276,12 @@ def homography_segmentation(masks, images):
     for file_name, loader in masks.items():
         archive = loader()
         m = archive['masks'][np.argmax(archive['scores'])]
-        gray = m.astype(np.uint8) * 255
-        edged = cv2.Canny(gray, 75, 200)
-        contours, _ = cv2.findContours(edged.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        cnt = sorted(contours, key=lambda c: cv2.arcLength(c, True), reverse=True)
-        chosen_contours = cnt[0]
-        for i in range(1, min(len(cnt), 4)):
-            chosen_contours = np.concatenate([chosen_contours, cnt[i]], axis=0)
-        hull = np.intp(cv2.convexHull(chosen_contours))
-        epsilon = 0.1 * cv2.arcLength(hull, True)
-        points = cv2.approxPolyDP(hull, epsilon, True)
+
+        points = _segment_mask_hull(m)
+
         if len(points) != 4:
             continue
 
-        points = _order_points(points.reshape(-1).reshape((-1, 2)))
         homography_results[file_name] = {
             'P1X': points[0][0], 'P1Y': points[0][1],
             'P2X': points[1][0], 'P2Y': points[1][1],
