@@ -220,6 +220,7 @@ def homography_segmentation(masks, images):
     for file_name, loader in masks.items():
         archive = loader()
         m = archive['masks'][np.argmax(archive['scores'])]
+        image_area = m.shape[0] * m.shape[1]
 
         points = _segment_mask_hull(m)
 

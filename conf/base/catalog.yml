@@ -9,6 +9,12 @@ express_expense:
   dataset: pillow.ImageDataSet
   layer: raw
 
+labels:
+  type: PartitionedDataSet
+  path: data/01_raw/Labels
+  dataset: text.TextDataSet
+  layer: raw
+
 homography_points:
   type: pandas.CSVDataSet
   filepath: data/02_intermediate/homography_points.csv
