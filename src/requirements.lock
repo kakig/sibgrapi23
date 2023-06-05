@@ -197,10 +197,10 @@ tinycss2==1.2.1
 toml==0.10.2
 tomli==2.0.1
 toposort==1.10
-torch==2.0.1+cpu
-torchaudio==2.0.2+cpu
+torch==2.0.1
+torchaudio==2.0.2
 torchmetrics==0.11.4
-torchvision==0.15.2+cpu
+torchvision==0.15.2
 tornado==6.2
 traitlets==5.9.0
 typing_extensions==4.5.0
