@@ -2,7 +2,9 @@ import enchant
 import re
 
 def cleanText(t):
-    return re.sub(r"[\n\t\s]*", "", t)
+    t = re.sub(r" +", " ", t) # replace multiple spaces with one
+    t = re.sub(r"[\s\n]+\n", "\n", t).strip() # remove empty lines
+    return t
 
 def accuracyByLevenshteinDistance(textOCR,label):
     #tira espaços, tab e \n
