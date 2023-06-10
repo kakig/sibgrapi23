@@ -72,3 +72,16 @@ masks_batched:
   dataset: sibigrapi2023.extras.datasets.numpy_dataset.NumpyZipDataSet
   path: data/01_raw/masks_batched
   filename_suffix: ".npz"
+
+image_perturbation_metrics:
+  type: PartitionedDataSet
+  path: data/08_reporting/image_perturbation_metrics
+  dataset:
+    type: pandas.CSVDataSet
+    save_args:
+      index: False
+  filename_suffix: ".csv"
+
+image_perturbation_report:
+  type: pandas.CSVDataSet
+  filepath: data/08_reporting/image_perturbation_report.csv
