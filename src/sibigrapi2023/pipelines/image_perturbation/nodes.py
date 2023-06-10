@@ -44,6 +44,8 @@ def _generate_results(express_expense, labels, preprocess_image_func):
     return df_results
 
 _perturbation_functions = {
+    "original": lambda image: image,
+
     "rotate5": lambda image: (rotate(np.array(image), 5, resize=True) * 255).astype(np.uint8),
     "rotate10": lambda image: (rotate(np.array(image), 10, resize=True) * 255).astype(np.uint8),
     "rotate15": lambda image: (rotate(np.array(image), 15, resize=True) * 255).astype(np.uint8),
@@ -94,4 +96,4 @@ def generate_ocr_perturbation_report(image_perturbation_metrics):
         df = df.T
         perturbation = filename.replace(".csv", "")
         results[perturbation] = df["mean"].astype(str) + " (" + df["std"].astype(str) + ")"
-    return pd.DataFrame(results).T.reset_index().rename(columns={"index": "perturbation"})
+    return pd.DataFrame(results).T.reset_index().rename(columns={"index": "perturbation"})#.sort_values("perturbation")
