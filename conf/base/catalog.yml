@@ -85,3 +85,25 @@ image_perturbation_metrics:
 image_perturbation_report:
   type: pandas.CSVDataSet
   filepath: data/08_reporting/image_perturbation_report.csv
+
+distorted:
+  type: PartitionedDataSet
+  path: data/01_raw/Distorted
+  dataset: pillow.ImageDataSet
+  layer: raw
+
+distorted_small:
+  type: PartitionedDataSet
+  path: data/01_raw/Distorted_small
+  dataset: pillow.ImageDataSet
+  layer: raw
+
+express_small:
+  type: PartitionedDataSet
+  path: data/01_raw/express_small
+  dataset: pillow.ImageDataSet
+  layer: raw
+
+methods_ocr:
+  type: json.JSONDataSet
+  filepath: data/02_intermediate/methods_ocr.json
