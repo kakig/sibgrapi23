@@ -13,5 +13,5 @@ def register_pipelines() -> Dict[str, Pipeline]:
     """
     pipelines = find_pipelines()
     # pipelines["__default__"] = sum(pipelines.values())
-    pipelines["__default__"] = pipelines["image_perturbation"]
+    pipelines["__default__"] = pipelines["metric_generation"]
     return pipelines
