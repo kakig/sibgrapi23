@@ -104,6 +104,30 @@ express_small:
   dataset: pillow.ImageDataSet
   layer: raw
 
-methods_ocr:
+express_test:
+  type: PartitionedDataSet
+  path: data/01_raw/express_test
+  dataset: pillow.ImageDataSet
+  layer: raw
+
+pipeline_sample_images:
+  type: PartitionedDataSet
+  path: data/08_reporting/pipeline_samples
+  dataset: pillow.ImageDataSet
+  layer: reporting
+
+methods_original_ocr_text:
   type: json.JSONDataSet
-  filepath: data/02_intermediate/methods_ocr.json
+  filepath: data/02_intermediate/methods_original_ocr_text.json
+
+methods_distorted_ocr_text:
+  type: json.JSONDataSet
+  filepath: data/02_intermediate/methods_distorted_ocr_text.json
+
+ablation_ocr_text:
+  type: json.JSONDataSet
+  filepath: data/02_intermediate/ablation_ocr_text.json
+
+ablation_ocr_distoreted_text:
+  type: json.JSONDataSet
+  filepath: data/02_intermediate/ablation_ocr_distorted_text.json

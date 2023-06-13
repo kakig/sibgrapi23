@@ -15,7 +15,7 @@ def create_pipeline(**kwargs) -> Pipeline:
       node(
         func=generate_ocr_perturbation_results,
         name="generate_ocr_perturbation_results_func",
-        inputs=["express_expense", "labels"],
+        inputs=["express_test", "labels"],
         outputs="image_perturbation_metrics",
       ),
       node(
