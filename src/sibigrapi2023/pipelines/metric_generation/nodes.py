@@ -379,7 +379,6 @@ def generate_methods_ocr_text(images):
 def ablation_sh(image):
     img = np.array(image)
     img = _homography(img)
-    img = _ISR(img)
     img = _medianBlur(img, filter_size=3)
     img = _dilate(img)
     img = _sharp(img)
@@ -389,7 +388,6 @@ def ablation_sh(image):
 def ablation_mp(image):
     img = np.array(image)
     img = _homography(img)
-    img = _ISR(img)
     img = _medianBlur(img, filter_size=3)
     img = _dilate(img)
     img = _binarizeAdaptive(img)
@@ -398,7 +396,6 @@ def ablation_mp(image):
 def ablation_sm(image):
     img = np.array(image)
     img = _homography(img)
-    img = _ISR(img)
     img = _medianBlur(img, filter_size=3)
     img = _binarizeAdaptive(img)
     return pytesseract.image_to_string(img)
@@ -406,7 +403,6 @@ def ablation_sm(image):
 def ablation_sr(image):
     img = np.array(image)
     img = _homography(img)
-    img = _ISR(img)
     img = _binarizeAdaptive(img)
     return pytesseract.image_to_string(img)
 
@@ -419,9 +415,7 @@ def ablation_hm(image):
 def generate_ablation_ocr_text(images):
     all_results = dict()
     pipeline_functions = {
-        "original": lambda x: pytesseract.image_to_string(x),
         "hm": ablation_hm,
-        "sr": ablation_sr,
         "sm": ablation_sm,
         "mp": ablation_mp,
         "sh": ablation_sh,
