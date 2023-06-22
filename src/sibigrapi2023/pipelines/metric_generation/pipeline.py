@@ -7,6 +7,7 @@ from .nodes import (
     generate_methods_ocr_text,
     generate_ablation_ocr_text,
     generate_pipeline_sample_images,
+    apply_ours_pipeline,
 )
 
 from kedro.pipeline import Pipeline, node, pipeline
@@ -41,7 +42,13 @@ def create_pipeline(**kwargs) -> Pipeline:
         node(
             func=generate_pipeline_sample_images,
             name="generate_pipeline_sample_images_func",
-            inputs="express_expense",
+            inputs="distorted_small",
             outputs="pipeline_sample_images",
+        ),
+        node(
+            func=apply_ours_pipeline,
+            name="apply_ours_pipeline_func",
+            inputs="adjustment_dataset",
+            outputs="adjustment_dataset_after",
         ),
     ])

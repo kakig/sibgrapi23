@@ -203,28 +203,53 @@ def _filterImages(imagesList):
 
   return (imagesGood, imagesMedium, imagesBad)
 
-def _imageQuality(img):
-    imgBlurLevel = _sharpnessTenengrad(img)
-    noiseLevel = _estimateNoise(img)
-    imgAngle = _getAngle(img)
-    #boas - aceitaveis
-    if(imgBlurLevel >= 12111.474131839535 and noiseLevel<= 0.4516075407697839): #verifica ruido e nitidez
-        if(imgAngle != None): # verifica se conseguiu calcular um angulo
-            if(imgAngle <= 1.249346097310384):# se encaixa em todos os parametros classifica como bom
-                return "good"
-        else:
-            return "good"
-    #descartadas 
-    if(imgAngle != None):
-        if(noiseLevel >= 5.688634446534304 or imgBlurLevel <= 5153.859697022798 or imgAngle >= 8.065917314340671):
-            return "bad"
-        else:
-            return "medium"
+def _imageQuality(image):
+  img = np.array(image)
+  imgBlurLevel = _sharpnessTenengrad(img)
+  noiseLevel = _estimateNoise(img)
+  imgAngle = _getAngle(img)
+  #boas - aceitaveis
+  if(imgBlurLevel >= 13099.15020419604 and noiseLevel<= 0.5727857190277632 ): #verifica ruido e nitidez
+    if(imgAngle != None): # verifica se conseguiu calcular um angulo
+      if(imgAngle <= 0.8458721126828875):# se encaixa em todos os parametros classifica como bom
+        return "good"
     else:
-        if((noiseLevel >= 5.688634446534304 or imgBlurLevel <= 5153.859697022798)):
-            return "bad"
-        else:
-            return "medium"
+      return "good"
+  #descartadas
+  if(imgAngle != None):
+    if(noiseLevel >= 4.306616843268918 or imgBlurLevel <= 4444.8946011304815 or imgAngle >= 11.691148059708732 ):
+      return "bad"
+    else:
+      return "medium"
+  else:
+    if((noiseLevel >= 4.306616843268918 or imgBlurLevel <= 4444.8946011304815 )):
+      return "bad"
+    else:
+      return "medium"
+
+
+#def _imageQuality(img):
+#    imgBlurLevel = _sharpnessTenengrad(img)
+#    noiseLevel = _estimateNoise(img)
+#    imgAngle = _getAngle(img)
+#    #boas - aceitaveis
+#    if(imgBlurLevel >= 12111.474131839535 and noiseLevel<= 0.4516075407697839): #verifica ruido e nitidez
+#        if(imgAngle != None): # verifica se conseguiu calcular um angulo
+#            if(imgAngle <= 1.249346097310384):# se encaixa em todos os parametros classifica como bom
+#                return "good"
+#        else:
+#            return "good"
+#    #descartadas 
+#    if(imgAngle != None):
+#        if(noiseLevel >= 5.688634446534304 or imgBlurLevel <= 5153.859697022798 or imgAngle >= 8.065917314340671):
+#            return "bad"
+#        else:
+#            return "medium"
+#    else:
+#        if((noiseLevel >= 5.688634446534304 or imgBlurLevel <= 5153.859697022798)):
+#            return "bad"
+#        else:
+#            return "medium"
 
 def _fileterImagePipeline(image):
     img = np.array(image)
@@ -341,6 +366,16 @@ def _adjustAllPipeline(image):
     img = _binarizeAdaptive(img)
     return pytesseract.image_to_string(img)
 
+def _adjustAllPipelineImg(image):
+    img = np.array(image)
+    img = _homography(img)
+    img = _ISR(img)
+    img = _medianBlur(img, filter_size=3)
+    img = _dilate(img)
+    img = _sharp(img)
+    img = _binarizeAdaptive(img)
+    return img
+
 def _oursPipeline(image):
     img = np.array(image)
     img_quality = _imageQuality(img)
@@ -350,6 +385,12 @@ def _oursPipeline(image):
         return ""
     else:
         return _adjustAllPipeline(img)
+
+def apply_ours_pipeline(images):
+    imgs = dict()
+    for filename, loader in images.items():
+        imgs[filename] = PIL.Image.fromarray(_adjustAllPipelineImg(loader()))
+    return imgs
 
 def generate_methods_ocr_text(images):
     all_results = dict()
@@ -378,53 +419,62 @@ def generate_methods_ocr_text(images):
 
 def ablation_sh(image):
     img = np.array(image)
-    img = _homography(img)
-    img = _medianBlur(img, filter_size=3)
-    img = _dilate(img)
     img = _sharp(img)
     img = _binarizeAdaptive(img)
     return pytesseract.image_to_string(img)
 
 def ablation_mp(image):
     img = np.array(image)
-    img = _homography(img)
-    img = _medianBlur(img, filter_size=3)
     img = _dilate(img)
+    img = _sharp(img)
     img = _binarizeAdaptive(img)
     return pytesseract.image_to_string(img)
 
 def ablation_sm(image):
     img = np.array(image)
-    img = _homography(img)
     img = _medianBlur(img, filter_size=3)
+    img = _dilate(img)
+    img = _sharp(img)
     img = _binarizeAdaptive(img)
     return pytesseract.image_to_string(img)
 
 def ablation_sr(image):
     img = np.array(image)
-    img = _homography(img)
+    img = _ISR(img)
+    img = _medianBlur(img, filter_size=3)
+    img = _dilate(img)
+    img = _sharp(img)
     img = _binarizeAdaptive(img)
     return pytesseract.image_to_string(img)
 
 def ablation_hm(image):
     img = np.array(image)
     img = _homography(img)
+    img = _ISR(img)
+    img = _medianBlur(img, filter_size=3)
+    img = _dilate(img)
+    img = _sharp(img)
     img = _binarizeAdaptive(img)
     return pytesseract.image_to_string(img)
 
 def generate_ablation_ocr_text(images):
     all_results = dict()
     pipeline_functions = {
-        "hm": ablation_hm,
-        "sm": ablation_sm,
-        "mp": ablation_mp,
+        "original": lambda x: pytesseract.image_to_string(x),
         "sh": ablation_sh,
+        "mp": ablation_mp,
+        "sm": ablation_sm,
+        "sr": ablation_sr,
+        "hm": ablation_hm,
     }
     for pipeline_name, pipeline_func in pipeline_functions.items():
         log.info("Running pipeline: %s" % pipeline_name)
         results = list()
         for file_name, loader in images.items():
             image = np.array(loader())
+            quality = _imageQuality(image)
+            if quality != "medium":
+                continue
             _clean_gpu_memory()
             start = time.process_time()
             ocr_text = pipeline_func(image)
@@ -439,13 +489,14 @@ def generate_ablation_ocr_text(images):
 
 def generate_pipeline_sample_images(images):
     samples = dict()
-    img = np.array(images["1000-receipt.jpg"]()) # take the first image
-    samples["00_original.png"] = PIL.Image.fromarray(img)
-    samples["01_homography.png"] = PIL.Image.fromarray(_homography(img))
-    samples["02_isr.png"] = PIL.Image.fromarray(_ISR(samples["01_homography.png"]))
-    samples["03_smooth.png"] = PIL.Image.fromarray(_medianBlur(samples["02_isr.png"]))
-    samples["04_morphologic.png"] = PIL.Image.fromarray(_dilate(samples["03_smooth.png"]))
-    samples["05_sharp.png"] = PIL.Image.fromarray(_sharp(samples["04_morphologic.png"]))
+    for filename, loader in images.items():
+        img = np.array(loader())
+        samples[filename + "_00_original.png"] = PIL.Image.fromarray(img)
+        samples[filename + "_01_homography.png"] = PIL.Image.fromarray(_homography(img))
+        samples[filename + "_02_isr.png"] = PIL.Image.fromarray(_ISR(samples[filename + "_01_homography.png"]))
+        samples[filename + "_03_smooth.png"] = PIL.Image.fromarray(_medianBlur(samples[filename + "_02_isr.png"]))
+        samples[filename + "_04_morphologic.png"] = PIL.Image.fromarray(_dilate(samples[filename + "_03_smooth.png"]))
+        samples[filename + "_05_sharp.png"] = PIL.Image.fromarray(_sharp(samples[filename + "_04_morphologic.png"]))
     return samples
 
 def generate_report(ocr_text, labels):
