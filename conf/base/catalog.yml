@@ -9,6 +9,18 @@ express_expense:
   dataset: pillow.ImageDataSet
   layer: raw
 
+adjustment_dataset:
+  type: PartitionedDataSet
+  path: data/01_raw/Adjustment-Dataset
+  dataset: pillow.ImageDataSet
+  layer: raw
+
+adjustment_dataset_after:
+  type: PartitionedDataSet
+  path: data/01_raw/Adjustment-Dataset-After
+  dataset: pillow.ImageDataSet
+  layer: raw
+
 labels:
   type: PartitionedDataSet
   path: data/01_raw/Labels
