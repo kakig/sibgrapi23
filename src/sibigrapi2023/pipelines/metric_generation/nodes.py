@@ -472,9 +472,6 @@ def generate_ablation_ocr_text(images):
         results = list()
         for file_name, loader in images.items():
             image = np.array(loader())
-            quality = _imageQuality(image)
-            if quality != "medium":
-                continue
             _clean_gpu_memory()
             start = time.process_time()
             ocr_text = pipeline_func(image)

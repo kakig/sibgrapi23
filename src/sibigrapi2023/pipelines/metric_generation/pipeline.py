@@ -36,7 +36,7 @@ def create_pipeline(**kwargs) -> Pipeline:
         node(
             func=generate_ablation_ocr_text,
             name="generate_ablation_ocr_distorted_text_func",
-            inputs="distorted",
+            inputs="distorted_validation",
             outputs="ablation_ocr_distorted_text",
         ),
         node(
